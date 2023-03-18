@@ -1,46 +1,57 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom'
+import React, { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 
 export function Users() {
   const [users, setUsers] = useState([]);
-  let totalUsers = 20;
-  let page = 1;
+  const [isFetching, setIsFetching] = useState(true);
+  const [page, setPage] = useState(1);
 
-  const getUsers = async () => {
-      const response = await fetch(`http://sweeftdigital-intern.eu-central-1.elasticbeanstalk.com/user/${page}/${totalUsers}`)
+  const isScrolling = () => {
+    if (
+      window.innerHeight + document.documentElement.scrollTop !==
+      document.documentElement.offsetHeight
+    ) {
+      return;
+    }
+    setIsFetching(true);
+  };
+
+  const loadUsers = useCallback(
+    async (page) => {
+      const response = await fetch(
+        `http://sweeftdigital-intern.eu-central-1.elasticbeanstalk.com/user/${page}/${100}`
+      );
       const data = await response.clone().json();
-      setUsers(data.list)
-    if( totalUsers >= 100 ) {
-      totalUsers = 20;
-      page += 1
-    } else {
-      totalUsers += 20
-    }
-  }
-
-  console.log(users)
-
-  const handleScroll = (e) => {
-    if(window.innerHeight + e.target.documentElement.scrollTop + 1 >= 
-      e.target.documentElement.scrollHeight) {
-      getUsers()
-      console.log('bottom')
-    }
-  }
+      setUsers([...users, ...data.list]);
+      setPage(page + 1);
+      setIsFetching(false);
+    },
+    [users]
+  );
 
   useEffect(() => {
-    getUsers();
-    window.addEventListener('scroll', handleScroll)
-  }, [])
+    window.addEventListener('scroll', isScrolling);
+    return () => window.removeEventListener('scroll', isScrolling);
+  }, []);
+
+  useEffect(() => {
+    if (isFetching) {
+      loadUsers(page);
+    }
+  }, [isFetching, loadUsers, page]);
 
   return (
-    <div className='container'>
+    <div className="container">
       {users.map((user) => {
-        return <div className='user' key={user.id}>
-          <img src={user.imageUrl} alt='user avatar' />
-          <Link to={`/user/${user.id}`} className='name'>{user.id}. {user.name} {user.lastName}</Link>
-          <span>{user.title}</span>
+        return (
+          <div className="user" key={user.id}>
+            <img src={user.imageUrl} alt="user avatar" />
+            <Link to={`/user/${user.id}`} className="name">
+              {user.id}. {user.name} {user.lastName}
+            </Link>
+            <span>{user.title}</span>
           </div>
+        );
       })}
     </div>
   );
